@@ -458,11 +458,11 @@ void BrooderAlarmGateway::EnterModemSleepMode() {
     // Enable deep sleep hold for all configured pins
     gpio_deep_sleep_hold_en();
 
-    // // Enter sleep mode
-    // // This command is used to enable UART Sleep or always work. If set to 0, UART always work. If set to 1,
-    // // ensure that DTR is pulled high and the module can go to DTR sleep. If set to 2, the module will enter RX
-    // // sleep. RX wakeup directly sends data through the serial port (for example: AT) to wake up
-    // modem.sendAT("+CSCLK=1");
+    // Enter sleep mode
+    // This command is used to enable UART Sleep or always work. If set to 0, UART always work. If set to 1,
+    // ensure that DTR is pulled high and the module can go to DTR sleep. If set to 2, the module will enter RX
+    // sleep. RX wakeup directly sends data through the serial port (for example: AT) to wake up
+    modem.sendAT("+CSCLK=1");
 
     // Attempt to enable modem sleep mode
     if (modem.sleepEnable(true)) {
@@ -475,9 +475,9 @@ void BrooderAlarmGateway::EnterModemSleepMode() {
     // Keep it low during the sleep period. If the module uses GPIO5 as reset, 
     // there will be a pulse when waking up from sleep that will cause the module to start directly.
     // https://github.com/Xinyuan-LilyGO/LilyGO-T-A76XX/issues/85
-    // digitalWrite(MODEM_RESET_PIN, !MODEM_RESET_LEVEL);
-    // gpio_hold_en(static_cast<gpio_num_t>(MODEM_RESET_PIN));
-    // gpio_deep_sleep_hold_en();
+    digitalWrite(MODEM_RESET_PIN, !MODEM_RESET_LEVEL);
+    gpio_hold_en(static_cast<gpio_num_t>(MODEM_RESET_PIN));
+    gpio_deep_sleep_hold_en();
 #endif
 }
 
@@ -496,19 +496,56 @@ bool BrooderAlarmGateway::TestModemConnection() {
 
 void BrooderAlarmGateway::WakeModemFromSleep(){
     Serial.println("Waking up modem...");
+    
+    // Release GPIO hold for DTR and power pins
     gpio_hold_dis((gpio_num_t)MODEM_DTR_PIN);
-
+#ifdef BOARD_POWERON_PIN
+    gpio_hold_dis((gpio_num_t)BOARD_POWERON_PIN);
+#endif
+    
+    // Toggle DTR to wake the modem
     pinMode(MODEM_DTR_PIN, OUTPUT);
     digitalWrite(MODEM_DTR_PIN, LOW);
-    delay(2000);
-    modem.sleepEnable(false);
+    delay(2000);  // Allow modem to stabilize
 
-    delay(10000);
+    // Disable sleep mode
+    modem.sleepEnable(false);
+    delay(5000);  // Wait for modem to exit sleep
+
+    // Test modem connection
+    if (!TestModemConnection()) {
+        Serial.println("Modem did not wake successfully. Reinitializing...");
+    } else {
+        Serial.println("Modem successfully woke up.");
+    }
+}
+
+void BrooderAlarmGateway::SwitchModemOff(){
+    Serial.println("Enter modem power off!");
+    if (modem.poweroff()) { 
+        Serial.println("Modem enter power off modem!"); 
+    } else { 
+        Serial.println("modem power off failed!"); 
+    }
+    delay(500);
+#ifdef BOARD_POWERON_PIN 
+    // Turn on DC boost to power off the modem 
+    digitalWrite(BOARD_POWERON_PIN, LOW);
+#endif
+#ifdef MODEM_RESET_PIN 
+    // Keep it low during the sleep period. If the module uses GPIO5 as reset, 
+    // there will be a pulse when waking up from sleep that will cause the module to start directly. 
+    // https://github.com/Xinyuan-LilyGO/LilyGO-T-A76XX/issues/85 
+    digitalWrite(MODEM_RESET_PIN, !MODEM_RESET_LEVEL); 
+    gpio_hold_en((gpio_num_t)MODEM_RESET_PIN); 
+    gpio_deep_sleep_hold_en();
+#endif
 }
 
 void BrooderAlarmGateway::EnterEspDeepSleepMode(uint8_t time_to_sleep_sec){
     Serial.println("ESP32 going to deep sleep...");
     esp_sleep_enable_timer_wakeup(time_to_sleep_sec * uS_TO_S_FACTOR);
+    delay(500);
     esp_deep_sleep_start();
     Serial.println("This will never be printed");
 }
@@ -516,27 +553,21 @@ void BrooderAlarmGateway::EnterEspDeepSleepMode(uint8_t time_to_sleep_sec){
 /*========================================================================*/
 void BrooderAlarmGateway::Init(){
     Serial.begin(115200); // Set console baud rate
-    if (esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_TIMER) {
-        InitModem();
-    } else {
-        WakeModemFromSleep();
-        TestModemConnection();
-        CheckSimStatus();
-    }
-
+    InitModem();
     InitBle();
 
-    UpdateGpsData();
+    // UpdateGpsData();
 
-    String msg = "BrooderAlarmGateway System initialization complete. The system is now running and operational.";
-    SendSMS(SMS_TARGET, msg);
+    // String msg = "BrooderAlarmGateway System initialization complete. The system is now running and operational.";
+    // SendSMS(SMS_TARGET, msg);
 }
 
 void BrooderAlarmGateway::Run(){
     ScanBle();
     ReadDataFromServer();
     auto msg = ReadSMS();
-    delay(60000);
+    SwitchModemOff();
+    EnterEspDeepSleepMode(60);
 }
 
 

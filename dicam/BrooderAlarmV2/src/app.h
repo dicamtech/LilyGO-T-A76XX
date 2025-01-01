@@ -119,6 +119,7 @@ private:
     void EnterModemSleepMode();
     bool TestModemConnection();
     void WakeModemFromSleep();
+    void SwitchModemOff();
 
     void EnterEspDeepSleepMode(uint8_t time_to_sleep_sec);
 
