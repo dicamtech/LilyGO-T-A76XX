@@ -24,7 +24,7 @@
 
 // Hard coded params
 #define MAX_SMS_TARGETS 10u
-#define SCAN_TIME 10 // Duration of BLE scan in seconds
+#define SCAN_TIME 5 // Duration of BLE scan in seconds
 #define SERVER "86.17.107.206"
 #define PORT 8181
 #define PATH "/gateway_data"

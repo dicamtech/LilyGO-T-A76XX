@@ -520,6 +520,8 @@ void BrooderAlarmGateway::Init(){
         InitModem();
     } else {
         WakeModemFromSleep();
+        TestModemConnection();
+        CheckSimStatus();
     }
 
     InitBle();
@@ -533,6 +535,8 @@ void BrooderAlarmGateway::Init(){
 void BrooderAlarmGateway::Run(){
     ScanBle();
     ReadDataFromServer();
+    auto msg = ReadSMS();
+    delay(60000);
 }
 
 
