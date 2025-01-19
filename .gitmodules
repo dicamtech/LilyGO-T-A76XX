@@ -1,0 +1,3 @@
+[submodule "dicam/BrooderAlarmV2/src/d2_params_generator"]
+	path = dicam/BrooderAlarmV2/src/d2_params_generator
+	url = https://github.com/dicamtech/d2_params_generator.git

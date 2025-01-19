@@ -554,20 +554,47 @@ void BrooderAlarmGateway::EnterEspDeepSleepMode(uint8_t time_to_sleep_sec){
 void BrooderAlarmGateway::Init(){
     Serial.begin(115200); // Set console baud rate
     InitModem();
-    InitBle();
+    // InitBle();
 
     // UpdateGpsData();
 
     // String msg = "BrooderAlarmGateway System initialization complete. The system is now running and operational.";
     // SendSMS(SMS_TARGET, msg);
+
 }
 
+    int previous_second = -1; // Initialize to a value that will never match a real second (e.g., -1)
+
+
 void BrooderAlarmGateway::Run(){
-    ScanBle();
-    ReadDataFromServer();
-    auto msg = ReadSMS();
-    SwitchModemOff();
-    EnterEspDeepSleepMode(60);
+    // ScanBle();
+    // ReadDataFromServer();
+    // auto msg = ReadSMS();
+    // SwitchModemOff();
+    // EnterEspDeepSleepMode(60);
+
+    // modem.sendAT(GF("+CCLK?"));
+    // if (modem.waitResponse(2000L, GF("+CCLK: \"")) != 1) { ; }
+
+
+    int year, month, day, hour, minute, second; 
+    float timezone;
+    modem.getNetworkTime(&year, &month, &day, &hour, &minute, &second, &timezone);
+
+        // Print only if the second has changed
+        if (second != previous_second) {
+            printf("Year: %d\n", year);
+            printf("Month: %d\n", month);
+            printf("Day: %d\n", day);
+            printf("Hour: %d\n", hour);
+            printf("Minute: %d\n", minute);
+            printf("Second: %d\n", second);
+            printf("Timezone: %.2f\n", timezone);
+
+            // Update the previous_second value
+            previous_second = second;
+        }
+
 }
 
 

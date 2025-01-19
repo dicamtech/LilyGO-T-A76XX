@@ -137,6 +137,7 @@ private:
     SystemParams system_params;
     SystemStatus system_status;
     Preferences preferences;
+    BLEScan *pBLEScan;
 
 };
 
